@@ -2,6 +2,7 @@ angular-bloodhound
 ==================
 
 An angular port of Bloodhound from twitter/typeahead.js
+NOTE: At this time, depends on underscore (or preferably lodash)
 
 ## Building
 * npm install
