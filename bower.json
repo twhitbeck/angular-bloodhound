@@ -13,7 +13,7 @@
     "tests"
   ],
   "dependencies": {
-    "angular": "~1.2.15",
+    "angular": "~1.2.x",
     "lodash": "~2.4.1"
   }
 }
