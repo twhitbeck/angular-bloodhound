@@ -1,0 +1,25 @@
+{
+  "name": "angular-bloodhound",
+  "version": "0.10.2",
+  "main": "dist/ngBloodhound.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "karma start --single-run --browsers PhantomJS"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/twhitbeck/angular-bloodhound.git"
+  },
+  "homepage": "https://github.com/twhitbeck/angular-bloodhound",
+  "devDependencies": {
+    "grunt": "^0.4.4",
+    "grunt-sed": "^0.1.1",
+    "grunt-contrib-watch": "^0.6.1",
+    "grunt-contrib-clean": "^0.5.0",
+    "grunt-contrib-uglify": "^0.4.0",
+    "grunt-contrib-jshint": "^0.9.2",
+    "grunt-contrib-connect": "^0.7.1"
+  }
+}

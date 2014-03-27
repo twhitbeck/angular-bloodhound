@@ -1,0 +1,19 @@
+{
+  "name": "angular-bloodhound",
+  "version": "0.10.2",
+  "authors": [
+    "Tim Whitbeck <twhitbeck@gmail.com>"
+  ],
+  "main": "dist/ngBloodhound.js",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "angular": "~1.2.15",
+    "lodash": "~2.4.1"
+  }
+}

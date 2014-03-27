@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html ng-app="ngBloodhoundTest">
+	<head>
+		<title>Simple test</title>
+</head>
+<body ng-controller="MainCtrl">
+	<input type="text" ng-model="term" ng-change="search(term)">
+
+	<ul>
+		<li ng-repeat="result in results" ng-bind-template="{{result.firstName}} {{result.lastName}}"></li>
+	</ul>
+
+	<script src="../bower_components/angular/angular.js"></script>
+	<script src="../bower_components/lodash/dist/lodash.js"></script>
+	<script src="../dist/ngBloodhound.js"></script>
+
+	<script src="scripts/index.js"></script>
+</body>
+</html>
