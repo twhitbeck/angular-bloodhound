@@ -7,7 +7,7 @@
 (function() {
   var module = angular.module('bloodhound.transport', ['bloodhound.lru-cache']);
 
-  module.factory('Transport', function($http, $q, LruCache) {
+  module.factory('Transport', function($http, $q, $timeout, LruCache) {
     var Transport = (function() {
       var pendingRequestsCount = 0,
       pendingRequests = {},
@@ -47,18 +47,24 @@
 
           // a request is already in progress, piggyback off of it
           if (req = pendingRequests[url]) {
-            req.then(done, fail);
+            req.then(passDataTo(done), passDataTo(fail));
           }
 
           // under the pending request threshold, so fire off a request
           else if (pendingRequestsCount < maxPendingRequests) {
             pendingRequestsCount++;
-            pendingRequests[url] = this._send(url, o).then(done, fail).finally(always);
+            pendingRequests[url] = this._send(url, o).then(passDataTo(done), passDataTo(fail)).finally(always);
           }
 
           // at the pending request threshold, so hang out in the on deck circle
           else {
             this.onDeckRequestArgs = [].slice.call(arguments, 0);
+          }
+
+          function passDataTo(fn) {
+            return function(response) {
+              fn(response.data);
+            };
           }
 
           function done(resp) {
@@ -95,7 +101,9 @@
           // in-memory cache hit
           if (resp = requestCache.get(url)) {
             // defer to stay consistent with behavior of ajax call
-            _.defer(function() { cb && cb(null, resp); });
+            $timeout(function() {
+              cb && cb(null, resp);
+            });
           }
 
           else {
@@ -123,13 +131,13 @@
           function onSuccess(resp) {
             // defer in case fn is synchronous, otherwise done
             // and always handlers will be attached after the resolution
-            _.defer(function() { deferred.resolve(resp); });
+            $timeout(function() { deferred.resolve(resp); });
           }
 
           function onError(err) {
             // defer in case fn is synchronous, otherwise done
             // and always handlers will be attached after the resolution
-            _.defer(function() { deferred.reject(err); });
+            $timeout(function() { deferred.reject(err); });
           }
         };
       }

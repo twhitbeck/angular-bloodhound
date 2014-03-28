@@ -182,7 +182,7 @@
     })();
     (function() {
         var module = angular.module("bloodhound.transport", [ "bloodhound.lru-cache" ]);
-        module.factory("Transport", function($http, $q, LruCache) {
+        module.factory("Transport", function($http, $q, $timeout, LruCache) {
             var Transport = function() {
                 var pendingRequestsCount = 0, pendingRequests = {}, maxPendingRequests = 6, requestCache = new LruCache(10);
                 function Transport(o) {
@@ -200,12 +200,17 @@
                     _get: function(url, o, cb) {
                         var that = this, req;
                         if (req = pendingRequests[url]) {
-                            req.then(done, fail);
+                            req.then(passDataTo(done), passDataTo(fail));
                         } else if (pendingRequestsCount < maxPendingRequests) {
                             pendingRequestsCount++;
-                            pendingRequests[url] = this._send(url, o).then(done, fail).finally(always);
+                            pendingRequests[url] = this._send(url, o).then(passDataTo(done), passDataTo(fail)).finally(always);
                         } else {
                             this.onDeckRequestArgs = [].slice.call(arguments, 0);
+                        }
+                        function passDataTo(fn) {
+                            return function(response) {
+                                fn(response.data);
+                            };
                         }
                         function done(resp) {
                             cb && cb(null, resp);
@@ -230,7 +235,7 @@
                             o = {};
                         }
                         if (resp = requestCache.get(url)) {
-                            _.defer(function() {
+                            $timeout(function() {
                                 cb && cb(null, resp);
                             });
                         } else {
@@ -246,12 +251,12 @@
                         fn(url, o, onSuccess, onError);
                         return deferred.promise;
                         function onSuccess(resp) {
-                            _.defer(function() {
+                            $timeout(function() {
                                 deferred.resolve(resp);
                             });
                         }
                         function onError(err) {
-                            _.defer(function() {
+                            $timeout(function() {
                                 deferred.reject(err);
                             });
                         }
