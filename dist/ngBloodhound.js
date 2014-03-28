@@ -200,16 +200,10 @@
                     _get: function(url, o, cb) {
                         var that = this, req;
                         if (req = pendingRequests[url]) {
-                            req.success(done).error(fail);
+                            req.then(done, fail);
                         } else if (pendingRequestsCount < maxPendingRequests) {
                             pendingRequestsCount++;
-                            pendingRequests[url] = this._send(url, o).success(function(data) {
-                                done(data);
-                                always();
-                            }).error(function() {
-                                fail(data);
-                                always();
-                            });
+                            pendingRequests[url] = this._send(url, o).then(done, fail).finally(always);
                         } else {
                             this.onDeckRequestArgs = [].slice.call(arguments, 0);
                         }

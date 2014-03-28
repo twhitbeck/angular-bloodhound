@@ -47,19 +47,13 @@
 
           // a request is already in progress, piggyback off of it
           if (req = pendingRequests[url]) {
-            req.success(done).error(fail);
+            req.then(done, fail);
           }
 
           // under the pending request threshold, so fire off a request
           else if (pendingRequestsCount < maxPendingRequests) {
             pendingRequestsCount++;
-            pendingRequests[url] = this._send(url, o).success(function(data) {
-              done(data);
-              always();
-            }).error(function() {
-              fail(data);
-              always();
-            });
+            pendingRequests[url] = this._send(url, o).then(done, fail).finally(always);
           }
 
           // at the pending request threshold, so hang out in the on deck circle
