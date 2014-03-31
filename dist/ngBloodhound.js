@@ -1,35 +1,37 @@
 (function(angular, _) {
     var VERSION = "0.10.2";
-    var tokenizers = function() {
-        return {
-            nonword: nonword,
-            whitespace: whitespace,
-            obj: {
-                nonword: getObjTokenizer(nonword),
-                whitespace: getObjTokenizer(whitespace)
-            }
-        };
-        function whitespace(s) {
-            return s.split(/\s+/);
-        }
-        function nonword(s) {
-            return s.split(/\W+/);
-        }
-        function getObjTokenizer(tokenizer) {
-            return function setKey(key) {
-                return function tokenize(o) {
-                    return tokenizer(o[key]);
-                };
-            };
-        }
-    }();
     (function() {
+        "use strict";
         var module = angular.module("bloodhound.tokenizers", []);
         module.factory("tokenizers", function() {
+            var tokenizers = function() {
+                return {
+                    nonword: nonword,
+                    whitespace: whitespace,
+                    obj: {
+                        nonword: getObjTokenizer(nonword),
+                        whitespace: getObjTokenizer(whitespace)
+                    }
+                };
+                function whitespace(s) {
+                    return s.split(/\s+/);
+                }
+                function nonword(s) {
+                    return s.split(/\W+/);
+                }
+                function getObjTokenizer(tokenizer) {
+                    return function setKey(key) {
+                        return function tokenize(o) {
+                            return tokenizer(o[key]);
+                        };
+                    };
+                }
+            }();
             return tokenizers;
         });
     })();
     (function() {
+        "use strict";
         var module = angular.module("bloodhound.lru-cache", []);
         module.factory("LruCache", function() {
             var LruCache = function() {
@@ -39,7 +41,7 @@
                     this.hash = {};
                     this.list = new List();
                 }
-                _.mixin(LruCache.prototype, {
+                angular.extend(LruCache.prototype, {
                     set: function set(key, val) {
                         var tailItem = this.list.tail, node;
                         if (this.size >= this.maxSize) {
@@ -67,7 +69,7 @@
                 function List() {
                     this.head = this.tail = null;
                 }
-                _.mixin(List.prototype, {
+                angular.extend(List.prototype, {
                     add: function add(node) {
                         if (this.head) {
                             node.next = this.head;
@@ -96,6 +98,7 @@
         });
     })();
     (function() {
+        "use strict";
         var module = angular.module("bloodhound.persistent-storage", []);
         module.factory("PersistentStorage", function() {
             var PersistentStorage = function() {
@@ -127,7 +130,7 @@
                             return decode(ls.getItem(this._prefix(key)));
                         },
                         set: function(key, val, ttl) {
-                            if (_.isNumber(ttl)) {
+                            if (angular.isNumber(ttl)) {
                                 ls.setItem(this._ttlKey(key), encode(now() + ttl));
                             } else {
                                 ls.removeItem(this._ttlKey(key));
@@ -153,25 +156,25 @@
                         },
                         isExpired: function(key) {
                             var ttl = decode(ls.getItem(this._ttlKey(key)));
-                            return _.isNumber(ttl) && now() > ttl ? true : false;
+                            return angular.isNumber(ttl) && now() > ttl ? true : false;
                         }
                     };
                 } else {
                     methods = {
-                        get: _.noop,
-                        set: _.noop,
-                        remove: _.noop,
-                        clear: _.noop,
-                        isExpired: _.noop
+                        get: angular.noop,
+                        set: angular.noop,
+                        remove: angular.noop,
+                        clear: angular.noop,
+                        isExpired: angular.noop
                     };
                 }
-                _.mixin(PersistentStorage.prototype, methods);
+                angular.extend(PersistentStorage.prototype, methods);
                 return PersistentStorage;
                 function now() {
                     return new Date().getTime();
                 }
                 function encode(val) {
-                    return JSON.stringify(_.isUndefined(val) ? null : val);
+                    return JSON.stringify(angular.isUndefined(val) ? null : val);
                 }
                 function decode(val) {
                     return JSON.parse(val);
@@ -181,6 +184,7 @@
         });
     })();
     (function() {
+        "use strict";
         var module = angular.module("bloodhound.transport", [ "bloodhound.lru-cache" ]);
         module.factory("Transport", function($http, $q, $timeout, LruCache) {
             var Transport = function() {
@@ -196,21 +200,16 @@
                 Transport.resetCache = function clearCache() {
                     requestCache = new LruCache(10);
                 };
-                _.mixin(Transport.prototype, {
+                angular.extend(Transport.prototype, {
                     _get: function(url, o, cb) {
-                        var that = this, req;
-                        if (req = pendingRequests[url]) {
-                            req.then(passDataTo(done), passDataTo(fail));
+                        var that = this, promise;
+                        if (promise = pendingRequests[url]) {
+                            promise.success(done).error(fail);
                         } else if (pendingRequestsCount < maxPendingRequests) {
                             pendingRequestsCount++;
-                            pendingRequests[url] = this._send(url, o).then(passDataTo(done), passDataTo(fail)).finally(always);
+                            pendingRequests[url] = this._send(url, o).success(done).error(fail).finally(always);
                         } else {
                             this.onDeckRequestArgs = [].slice.call(arguments, 0);
-                        }
-                        function passDataTo(fn) {
-                            return function(response) {
-                                fn(response.data);
-                            };
                         }
                         function done(resp) {
                             cb && cb(null, resp);
@@ -230,14 +229,14 @@
                     },
                     get: function(url, o, cb) {
                         var resp;
-                        if (_.isFunction(o)) {
+                        if (angular.isFunction(o)) {
                             cb = o;
                             o = {};
                         }
                         if (resp = requestCache.get(url)) {
                             $timeout(function() {
                                 cb && cb(null, resp);
-                            });
+                            }, 0);
                         } else {
                             this._get(url, o, cb);
                         }
@@ -245,7 +244,7 @@
                     }
                 });
                 return Transport;
-                function callbackToDeferred(fn) {
+                function callbackToPromise(fn) {
                     return function customSendWrapper(url, o) {
                         var deferred = $q.defer();
                         fn(url, o, onSuccess, onError);
@@ -253,12 +252,12 @@
                         function onSuccess(resp) {
                             $timeout(function() {
                                 deferred.resolve(resp);
-                            });
+                            }, 0);
                         }
                         function onError(err) {
                             $timeout(function() {
                                 deferred.reject(err);
-                            });
+                            }, 0);
                         }
                     };
                 }
@@ -267,28 +266,28 @@
         });
     })();
     (function() {
+        "use strict";
         var module = angular.module("bloodhound.search-index", []);
-        module.factory("SearchIndex", function($log) {
+        module.factory("SearchIndex", function($filter) {
+            var filter = $filter("filter");
             var SearchIndex = function() {
                 function SearchIndex(o) {
                     o = o || {};
                     if (!o.datumTokenizer || !o.queryTokenizer) {
-                        var err = "datumTokenizer and queryTokenizer are both required";
-                        $log.error(err);
-                        throw new Error(err);
+                        throw new Error("datumTokenizer and queryTokenizer are both required");
                     }
                     this.datumTokenizer = o.datumTokenizer;
                     this.queryTokenizer = o.queryTokenizer;
                     this.reset();
                 }
-                _.mixin(SearchIndex.prototype, {
+                angular.extend(SearchIndex.prototype, {
                     bootstrap: function bootstrap(o) {
                         this.datums = o.datums;
                         this.trie = o.trie;
                     },
                     add: function(data) {
                         var that = this;
-                        data = _.isArray(data) ? data : [ data ];
+                        data = angular.isArray(data) ? data : [ data ];
                         _.each(data, function(datum) {
                             var id, tokens;
                             id = that.datums.push(datum) - 1;
@@ -342,7 +341,7 @@
                 });
                 return SearchIndex;
                 function normalizeTokens(tokens) {
-                    tokens = _.filter(tokens, function(token) {
+                    tokens = filter(tokens, function(token) {
                         return !!token;
                     });
                     tokens = _.map(tokens, function(token) {
@@ -391,8 +390,9 @@
         });
     })();
     (function() {
-        var module = angular.module("bloodhound.options-parser", []);
-        module.factory("oParser", function($log) {
+        "use strict";
+        var module = angular.module("bloodhound.options-parser", [ "bloodhound.util" ]);
+        module.factory("oParser", function(util) {
             var oParser = function() {
                 return {
                     local: getLocal,
@@ -412,17 +412,15 @@
                         ajax: {}
                     };
                     if (prefetch = o.prefetch || null) {
-                        prefetch = _.isString(prefetch) ? {
+                        prefetch = angular.isString(prefetch) ? {
                             url: prefetch
                         } : prefetch;
-                        prefetch = _.extend(defaults, prefetch);
+                        prefetch = angular.extend(defaults, prefetch);
                         prefetch.thumbprint = VERSION + prefetch.thumbprint;
                         prefetch.ajax.type = prefetch.ajax.type || "GET";
                         prefetch.ajax.dataType = prefetch.ajax.dataType || "json";
                         if (!prefetch.url) {
-                            var err = "prefetch requires url to be set";
-                            $log.error(err);
-                            throw new Error(err);
+                            throw new Error("prefetch requires url to be set");
                         }
                     }
                     return prefetch;
@@ -440,30 +438,28 @@
                         ajax: {}
                     };
                     if (remote = o.remote || null) {
-                        remote = _.isString(remote) ? {
+                        remote = angular.isString(remote) ? {
                             url: remote
                         } : remote;
-                        remote = _.extend(defaults, remote);
+                        remote = angular.extend(defaults, remote);
                         remote.rateLimiter = /^throttle$/i.test(remote.rateLimitBy) ? byThrottle(remote.rateLimitWait) : byDebounce(remote.rateLimitWait);
                         remote.ajax.type = remote.ajax.type || "GET";
                         remote.ajax.dataType = remote.ajax.dataType || "json";
                         delete remote.rateLimitBy;
                         delete remote.rateLimitWait;
                         if (!remote.url) {
-                            var err = "remote requires url to be set";
-                            $log.error(err);
-                            throw new Error(err);
+                            throw new Error("remote requires url to be set");
                         }
                     }
                     return remote;
                     function byDebounce(wait) {
                         return function(fn) {
-                            return _.debounce(fn, wait);
+                            return util.debounce(fn, wait);
                         };
                     }
                     function byThrottle(wait) {
                         return function(fn) {
-                            return _.throttle(fn, wait);
+                            return util.throttle(fn, wait);
                         };
                     }
                 }
@@ -472,148 +468,199 @@
         });
     })();
     (function() {
-        var module = angular.module("bloodhound", [ "bloodhound.tokenizers", "bloodhound.persistent-storage", "bloodhound.transport", "bloodhound.options-parser", "bloodhound.search-index" ]);
-        module.factory("Bloodhound", function($log, $q, $http, tokenizers, PersistentStorage, Transport, oParser, SearchIndex) {
-            var old, keys;
-            keys = {
-                data: "data",
-                protocol: "protocol",
-                thumbprint: "thumbprint"
-            };
-            function Bloodhound(o) {
-                if (!o || !o.local && !o.prefetch && !o.remote) {
-                    var err = "one of local, prefetch, or remote is required";
-                    $log.error(err);
-                    throw new Error(err);
+        "use strict";
+        var module = angular.module("bloodhound", [ "bloodhound.tokenizers", "bloodhound.options-parser", "bloodhound.search-index", "bloodhound.persistent-storage", "bloodhound.transport" ]);
+        module.factory("Bloodhound", function($rootScope, $q, $http, tokenizers, oParser, SearchIndex, PersistentStorage, Transport) {
+            var Bloodhound = function() {
+                var old, keys;
+                keys = {
+                    data: "data",
+                    protocol: "protocol",
+                    thumbprint: "thumbprint"
+                };
+                function Bloodhound(o) {
+                    if (!o || !o.local && !o.prefetch && !o.remote) {
+                        throw new Error("one of local, prefetch, or remote is required");
+                    }
+                    this.limit = o.limit || 5;
+                    this.sorter = getSorter(o.sorter);
+                    this.dupDetector = o.dupDetector || ignoreDuplicates;
+                    this.local = oParser.local(o);
+                    this.prefetch = oParser.prefetch(o);
+                    this.remote = oParser.remote(o);
+                    this.cacheKey = this.prefetch ? this.prefetch.cacheKey || this.prefetch.url : null;
+                    this.index = new SearchIndex({
+                        datumTokenizer: o.datumTokenizer,
+                        queryTokenizer: o.queryTokenizer
+                    });
+                    this.storage = this.cacheKey ? new PersistentStorage(this.cacheKey) : null;
                 }
-                this.limit = o.limit || 5;
-                this.sorter = getSorter(o.sorter);
-                this.dupDetector = o.dupDetector || ignoreDuplicates;
-                this.local = oParser.local(o);
-                this.prefetch = oParser.prefetch(o);
-                this.remote = oParser.remote(o);
-                this.cacheKey = this.prefetch ? this.prefetch.cacheKey || this.prefetch.url : null;
-                this.index = new SearchIndex({
-                    datumTokenizer: o.datumTokenizer,
-                    queryTokenizer: o.queryTokenizer
-                });
-                this.storage = this.cacheKey ? new PersistentStorage(this.cacheKey) : null;
-            }
-            Bloodhound.tokenizers = tokenizers;
-            _.mixin(Bloodhound.prototype, {
-                _loadPrefetch: function loadPrefetch(o) {
-                    var that = this, serialized, deferred;
-                    if (serialized = this._readFromStorage(o.thumbprint)) {
-                        this.index.bootstrap(serialized);
-                        deferred = $q.defer();
-                    } else {
-                        deferred = $q.defer();
-                        $http.get(o.url, o.ajax).success(function(data) {
-                            deferred.resolve(data);
-                            handlePrefetchResponse(data);
-                        });
-                    }
-                    return deferred;
-                    function handlePrefetchResponse(resp) {
-                        that.clear();
-                        that.add(o.filter ? o.filter(resp) : resp);
-                        that._saveToStorage(that.index.serialize(), o.thumbprint, o.ttl);
-                    }
-                },
-                _getFromRemote: function getFromRemote(query, cb) {
-                    var that = this, url, uriEncodedQuery;
-                    query = query || "";
-                    uriEncodedQuery = encodeURIComponent(query);
-                    url = this.remote.replace ? this.remote.replace(this.remote.url, query) : this.remote.url.replace(this.remote.wildcard, uriEncodedQuery);
-                    return this.transport.get(url, this.remote.ajax, handleRemoteResponse);
-                    function handleRemoteResponse(err, resp) {
-                        err ? cb([]) : cb(that.remote.filter ? that.remote.filter(resp) : resp);
-                    }
-                },
-                _saveToStorage: function saveToStorage(data, thumbprint, ttl) {
-                    if (this.storage) {
-                        this.storage.set(keys.data, data, ttl);
-                        this.storage.set(keys.protocol, location.protocol, ttl);
-                        this.storage.set(keys.thumbprint, thumbprint, ttl);
-                    }
-                },
-                _readFromStorage: function readFromStorage(thumbprint) {
-                    var stored = {}, isExpired;
-                    if (this.storage) {
-                        stored.data = this.storage.get(keys.data);
-                        stored.protocol = this.storage.get(keys.protocol);
-                        stored.thumbprint = this.storage.get(keys.thumbprint);
-                    }
-                    isExpired = stored.thumbprint !== thumbprint || stored.protocol !== location.protocol;
-                    return stored.data && !isExpired ? stored.data : null;
-                },
-                _initialize: function initialize() {
-                    var that = this, local = this.local, deferred;
-                    if (this.prefetch) {
-                        deferred = this._loadPrefetch(this.prefetch);
-                    } else {
-                        deferred = $q.defer();
-                        deferred.resolve();
-                    }
-                    local && deferred.promise.then(addLocalToIndex);
-                    this.transport = this.remote ? new Transport(this.remote) : null;
-                    return this.initPromise = deferred.promise;
-                    function addLocalToIndex() {
-                        that.add(_.isFunction(local) ? local() : local);
-                    }
-                },
-                initialize: function initialize(force) {
-                    return !this.initPromise || force ? this._initialize() : this.initPromise;
-                },
-                add: function add(data) {
-                    this.index.add(data);
-                },
-                get: function get(query, cb) {
-                    var that = this, matches = [], cacheHit = false;
-                    matches = this.index.get(query);
-                    matches = this.sorter(matches).slice(0, this.limit);
-                    if (matches.length < this.limit && this.transport) {
-                        cacheHit = this._getFromRemote(query, returnRemoteMatches);
-                    }
-                    if (!cacheHit) {
-                        (matches.length > 0 || !this.transport) && cb && cb(matches);
-                    }
-                    function returnRemoteMatches(remoteMatches) {
-                        var matchesWithBackfill = matches.slice(0);
-                        _.each(remoteMatches, function(remoteMatch) {
-                            var isDuplicate;
-                            isDuplicate = _.some(matchesWithBackfill, function(match) {
-                                return that.dupDetector(remoteMatch, match);
+                Bloodhound.tokenizers = tokenizers;
+                angular.extend(Bloodhound.prototype, {
+                    _loadPrefetch: function loadPrefetch(o) {
+                        var that = this, serialized, promise;
+                        if (serialized = this._readFromStorage(o.thumbprint)) {
+                            this.index.bootstrap(serialized);
+                            var deferred = $q.defer();
+                            deferred.resolve();
+                            promise = deferred.promise;
+                        } else {
+                            promise = $http.get(o.url, o.ajax).success(handlePrefetchResponse);
+                        }
+                        return promise;
+                        function handlePrefetchResponse(resp) {
+                            that.clear();
+                            that.add(o.filter ? o.filter(resp) : resp);
+                            that._saveToStorage(that.index.serialize(), o.thumbprint, o.ttl);
+                        }
+                    },
+                    _getFromRemote: function getFromRemote(query, cb) {
+                        var that = this, url, uriEncodedQuery;
+                        query = query || "";
+                        uriEncodedQuery = encodeURIComponent(query);
+                        url = this.remote.replace ? this.remote.replace(this.remote.url, query) : this.remote.url.replace(this.remote.wildcard, uriEncodedQuery);
+                        return this.transport.get(url, this.remote.ajax, handleRemoteResponse);
+                        function handleRemoteResponse(err, resp) {
+                            err ? cb([]) : cb(that.remote.filter ? that.remote.filter(resp) : resp);
+                        }
+                    },
+                    _saveToStorage: function saveToStorage(data, thumbprint, ttl) {
+                        if (this.storage) {
+                            this.storage.set(keys.data, data, ttl);
+                            this.storage.set(keys.protocol, location.protocol, ttl);
+                            this.storage.set(keys.thumbprint, thumbprint, ttl);
+                        }
+                    },
+                    _readFromStorage: function readFromStorage(thumbprint) {
+                        var stored = {}, isExpired;
+                        if (this.storage) {
+                            stored.data = this.storage.get(keys.data);
+                            stored.protocol = this.storage.get(keys.protocol);
+                            stored.thumbprint = this.storage.get(keys.thumbprint);
+                        }
+                        isExpired = stored.thumbprint !== thumbprint || stored.protocol !== location.protocol;
+                        return stored.data && !isExpired ? stored.data : null;
+                    },
+                    _initialize: function initialize() {
+                        var that = this, local = this.local, promise;
+                        if (this.prefetch) {
+                            promise = this._loadPrefetch(this.prefetch);
+                        } else {
+                            var deferred = $q.defer();
+                            deferred.resolve();
+                            promise = deferred.promise;
+                        }
+                        local && promise.then(addLocalToIndex);
+                        this.transport = this.remote ? new Transport(this.remote) : null;
+                        return this.initPromise = promise;
+                        function addLocalToIndex() {
+                            that.add(angular.isFunction(local) ? local() : local);
+                        }
+                    },
+                    initialize: function initialize(force) {
+                        return !this.initPromise || force ? this._initialize() : this.initPromise;
+                    },
+                    add: function add(data) {
+                        this.index.add(data);
+                    },
+                    get: function get(query, cb) {
+                        var that = this, matches = [], cacheHit = false;
+                        matches = this.index.get(query);
+                        matches = this.sorter(matches).slice(0, this.limit);
+                        if (matches.length < this.limit && this.transport) {
+                            cacheHit = this._getFromRemote(query, returnRemoteMatches);
+                        }
+                        if (!cacheHit) {
+                            (matches.length > 0 || !this.transport) && cb && cb(matches);
+                        }
+                        function returnRemoteMatches(remoteMatches) {
+                            var matchesWithBackfill = matches.slice(0);
+                            _.each(remoteMatches, function(remoteMatch) {
+                                var isDuplicate;
+                                isDuplicate = _.some(matchesWithBackfill, function(match) {
+                                    return that.dupDetector(remoteMatch, match);
+                                });
+                                !isDuplicate && matchesWithBackfill.push(remoteMatch);
+                                return matchesWithBackfill.length < that.limit;
                             });
-                            !isDuplicate && matchesWithBackfill.push(remoteMatch);
-                            return matchesWithBackfill.length < that.limit;
-                        });
-                        cb && cb(that.sorter(matchesWithBackfill));
+                            cb && cb(that.sorter(matchesWithBackfill));
+                        }
+                    },
+                    clear: function clear() {
+                        this.index.reset();
+                    },
+                    clearPrefetchCache: function clearPrefetchCache() {
+                        this.storage && this.storage.clear();
+                    },
+                    clearRemoteCache: function clearRemoteCache() {
+                        this.transport && Transport.resetCache();
                     }
-                },
-                clear: function clear() {
-                    this.index.reset();
-                },
-                clearPrefetchCache: function clearPrefetchCache() {
-                    this.storage && this.storage.clear();
-                },
-                clearRemoteCache: function clearRemoteCache() {
-                    this.transport && Transport.resetCache();
+                });
+                return Bloodhound;
+                function getSorter(sortFn) {
+                    return angular.isFunction(sortFn) ? sort : noSort;
+                    function sort(array) {
+                        return array.sort(sortFn);
+                    }
+                    function noSort(array) {
+                        return array;
+                    }
                 }
-            });
+                function ignoreDuplicates() {
+                    return false;
+                }
+            }();
             return Bloodhound;
-            function getSorter(sortFn) {
-                return _.isFunction(sortFn) ? sort : noSort;
-                function sort(array) {
-                    return array.sort(sortFn);
+        });
+    })();
+    (function() {
+        "use strict";
+        var module = angular.module("bloodhound.util", []);
+        module.factory("util", function($timeout) {
+            return {
+                debounce: function(func, wait, immediate) {
+                    var timeout, result;
+                    return function() {
+                        var context = this, args = arguments, later, callNow;
+                        later = function() {
+                            timeout = null;
+                            if (!immediate) {
+                                result = func.apply(context, args);
+                            }
+                        };
+                        callNow = immediate && !timeout;
+                        clearTimeout(timeout);
+                        timeout = setTimeout(later, wait);
+                        if (callNow) {
+                            result = func.apply(context, args);
+                        }
+                        return result;
+                    };
+                },
+                throttle: function(func, wait) {
+                    var context, args, timeout, result, previous, later;
+                    previous = 0;
+                    later = function() {
+                        previous = new Date();
+                        timeout = null;
+                        result = func.apply(context, args);
+                    };
+                    return function() {
+                        var now = new Date(), remaining = wait - (now - previous);
+                        context = this;
+                        args = arguments;
+                        if (remaining <= 0) {
+                            clearTimeout(timeout);
+                            timeout = null;
+                            previous = now;
+                            result = func.apply(context, args);
+                        } else if (!timeout) {
+                            timeout = setTimeout(later, remaining);
+                        }
+                        return result;
+                    };
                 }
-                function noSort(array) {
-                    return array;
-                }
-            }
-            function ignoreDuplicates() {
-                return false;
-            }
+            };
         });
     })();
 })(window.angular, window._);

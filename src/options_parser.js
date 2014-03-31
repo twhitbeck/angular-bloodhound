@@ -5,9 +5,11 @@
  */
 
 (function() {
-  var module = angular.module('bloodhound.options-parser', []);
-
-  module.factory('oParser', function($log) {
+  'use strict';
+  
+  var module = angular.module('bloodhound.options-parser', ['bloodhound.util']);
+  
+  module.factory('oParser', function(util) {
     var oParser = (function() {
 
       return {
@@ -33,20 +35,18 @@
 
         if (prefetch = o.prefetch || null) {
           // support basic (url) and advanced configuration
-          prefetch = _.isString(prefetch) ? { url: prefetch } : prefetch;
+          prefetch = angular.isString(prefetch) ? { url: prefetch } : prefetch;
 
-          prefetch = _.extend(defaults, prefetch);
+          prefetch = angular.extend(defaults, prefetch);
           prefetch.thumbprint = VERSION + prefetch.thumbprint;
 
           prefetch.ajax.type = prefetch.ajax.type || 'GET';
           prefetch.ajax.dataType = prefetch.ajax.dataType || 'json';
 
           if (!prefetch.url) {
-            var err = 'prefetch requires url to be set';
-
-            $log.error(err);
-            throw new Error(err);
+            throw new Error('prefetch requires url to be set');
           }
+          //!prefetch.url && $.error('prefetch requires url to be set');
         }
 
         return prefetch;
@@ -68,9 +68,9 @@
 
         if (remote = o.remote || null) {
           // support basic (url) and advanced configuration
-          remote = _.isString(remote) ? { url: remote } : remote;
+          remote = angular.isString(remote) ? { url: remote } : remote;
 
-          remote = _.extend(defaults, remote);
+          remote = angular.extend(defaults, remote);
           remote.rateLimiter = /^throttle$/i.test(remote.rateLimitBy) ?
             byThrottle(remote.rateLimitWait) : byDebounce(remote.rateLimitWait);
 
@@ -81,25 +81,23 @@
           delete remote.rateLimitWait;
 
           if (!remote.url) {
-            var err = 'remote requires url to be set';
-
-            $log.error(err);
-            throw new Error(err);
+            throw new Error('remote requires url to be set');
           }
+          //!remote.url && $.error('remote requires url to be set');
         }
 
         return remote;
 
         function byDebounce(wait) {
-          return function(fn) { return _.debounce(fn, wait); };
+          return function(fn) { return util.debounce(fn, wait); };
         }
 
         function byThrottle(wait) {
-          return function(fn) { return _.throttle(fn, wait); };
+          return function(fn) { return util.throttle(fn, wait); };
         }
       }
     })();
-
+    
     return oParser;
   });
 })();

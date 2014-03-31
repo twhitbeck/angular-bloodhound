@@ -4,7 +4,7 @@
 		<title>Simple test</title>
 </head>
 <body ng-controller="MainCtrl">
-	<input type="text" ng-model="term" ng-change="search(term)">
+	<input type="text" ng-model="query" ng-change="search(query)">
 
 	<ul>
 		<li ng-repeat="result in results" ng-bind-template="{{result.firstName}} {{result.lastName}}"></li>

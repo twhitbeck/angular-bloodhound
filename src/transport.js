@@ -5,14 +5,16 @@
  */
 
 (function() {
+  'use strict';
+  
   var module = angular.module('bloodhound.transport', ['bloodhound.lru-cache']);
-
+  
   module.factory('Transport', function($http, $q, $timeout, LruCache) {
     var Transport = (function() {
       var pendingRequestsCount = 0,
-      pendingRequests = {},
-      maxPendingRequests = 6,
-      requestCache = new LruCache(10);
+          pendingRequests = {},
+          maxPendingRequests = 6,
+          requestCache = new LruCache(10);
 
       // constructor
       // -----------
@@ -38,33 +40,28 @@
       // instance methods
       // ----------------
 
-      _.mixin(Transport.prototype, {
+      angular.extend(Transport.prototype, {
 
         // ### private
 
         _get: function(url, o, cb) {
-          var that = this, req;
+          var that = this, promise;
 
           // a request is already in progress, piggyback off of it
-          if (req = pendingRequests[url]) {
-            req.then(passDataTo(done), passDataTo(fail));
+          if (promise = pendingRequests[url]) {
+            promise.success(done).error(fail);
           }
 
           // under the pending request threshold, so fire off a request
           else if (pendingRequestsCount < maxPendingRequests) {
             pendingRequestsCount++;
-            pendingRequests[url] = this._send(url, o).then(passDataTo(done), passDataTo(fail)).finally(always);
+            pendingRequests[url] =
+              this._send(url, o).success(done).error(fail).finally(always);
           }
 
           // at the pending request threshold, so hang out in the on deck circle
           else {
             this.onDeckRequestArgs = [].slice.call(arguments, 0);
-          }
-
-          function passDataTo(fn) {
-            return function(response) {
-              fn(response.data);
-            };
           }
 
           function done(resp) {
@@ -93,7 +90,7 @@
         get: function(url, o, cb) {
           var resp;
 
-          if (_.isFunction(o)) {
+          if (angular.isFunction(o)) {
             cb = o;
             o = {};
           }
@@ -103,7 +100,8 @@
             // defer to stay consistent with behavior of ajax call
             $timeout(function() {
               cb && cb(null, resp);
-            });
+            }, 0);
+            //_.defer(function() { cb && cb(null, resp); });
           }
 
           else {
@@ -120,7 +118,7 @@
       // helper functions
       // ----------------
 
-      function callbackToDeferred(fn) {
+      function callbackToPromise(fn) {
         return function customSendWrapper(url, o) {
           var deferred = $q.defer();
 
@@ -131,18 +129,24 @@
           function onSuccess(resp) {
             // defer in case fn is synchronous, otherwise done
             // and always handlers will be attached after the resolution
-            $timeout(function() { deferred.resolve(resp); });
+            $timeout(function() {
+              deferred.resolve(resp);
+            }, 0);
+            //_.defer(function() { deferred.resolve(resp); });
           }
 
           function onError(err) {
             // defer in case fn is synchronous, otherwise done
             // and always handlers will be attached after the resolution
-            $timeout(function() { deferred.reject(err); });
+            $timeout(function() {
+              deferred.reject(err);
+            }, 0);
+            //_.defer(function() { deferred.reject(err); });
           }
         };
       }
     })();
-
+    
     return Transport;
   });
 })();

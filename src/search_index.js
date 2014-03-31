@@ -5,9 +5,13 @@
  */
 
 (function() {
+  'use strict';
+  
   var module = angular.module('bloodhound.search-index', []);
+  
+  module.factory('SearchIndex', function($filter) {
+    var filter = $filter('filter');
 
-  module.factory('SearchIndex', function($log) {
     var SearchIndex = (function() {
 
       // constructor
@@ -17,10 +21,8 @@
         o = o || {};
 
         if (!o.datumTokenizer || !o.queryTokenizer) {
-          var err = 'datumTokenizer and queryTokenizer are both required';
-
-          $log.error(err);
-          throw new Error(err);
+          throw new Error('datumTokenizer and queryTokenizer are both required');
+          //$.error('datumTokenizer and queryTokenizer are both required');
         }
 
         this.datumTokenizer = o.datumTokenizer;
@@ -32,7 +34,7 @@
       // instance methods
       // ----------------
 
-      _.mixin(SearchIndex.prototype, {
+      angular.extend(SearchIndex.prototype, {
 
         // ### public
 
@@ -44,7 +46,7 @@
         add: function(data) {
           var that = this;
 
-          data = _.isArray(data) ? data : [data];
+          data = angular.isArray(data) ? data : [data];
 
           _.each(data, function(datum) {
             var id, tokens;
@@ -118,8 +120,8 @@
       // ----------------
 
       function normalizeTokens(tokens) {
-        // filter out falsy tokens
-        tokens = _.filter(tokens, function(token) { return !!token; });
+       // filter out falsy tokens
+        tokens = filter(tokens, function(token) { return !!token; });
 
         // normalize tokens
         tokens = _.map(tokens, function(token) { return token.toLowerCase(); });
@@ -171,7 +173,7 @@
         function compare(a, b) { return a - b; }
       }
     })();
-
+    
     return SearchIndex;
   });
 })();

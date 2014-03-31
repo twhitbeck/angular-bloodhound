@@ -5,8 +5,10 @@
  */
 
 (function() {
+  'use strict';
+  
   var module = angular.module('bloodhound.persistent-storage', []);
-
+  
   module.factory('PersistentStorage', function() {
     var PersistentStorage = (function() {
       var ls, methods;
@@ -58,7 +60,7 @@
           },
 
           set: function(key, val, ttl) {
-            if (_.isNumber(ttl)) {
+            if (angular.isNumber(ttl)) {
               ls.setItem(this._ttlKey(key), encode(now() + ttl));
             }
 
@@ -96,22 +98,22 @@
           isExpired: function(key) {
             var ttl = decode(ls.getItem(this._ttlKey(key)));
 
-            return _.isNumber(ttl) && now() > ttl ? true : false;
+            return angular.isNumber(ttl) && now() > ttl ? true : false;
           }
         };
       }
 
       else {
         methods = {
-          get: _.noop,
-          set: _.noop,
-          remove: _.noop,
-          clear: _.noop,
-          isExpired: _.noop
+          get: angular.noop,
+          set: angular.noop,
+          remove: angular.noop,
+          clear: angular.noop,
+          isExpired: angular.noop
         };
       }
 
-      _.mixin(PersistentStorage.prototype, methods);
+      angular.extend(PersistentStorage.prototype, methods);
 
       return PersistentStorage;
 
@@ -124,14 +126,14 @@
 
       function encode(val) {
         // convert undefined to null to avoid issues with JSON.parse
-        return JSON.stringify(_.isUndefined(val) ? null : val);
+        return JSON.stringify(angular.isUndefined(val) ? null : val);
       }
 
       function decode(val) {
         return JSON.parse(val);
       }
     })();
-
-    return PersistentStorage;
+  
+  return PersistentStorage;
   });
 })();

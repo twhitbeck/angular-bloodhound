@@ -6,7 +6,8 @@ var files = [
 	'src/transport.js',
 	'src/search_index.js',
 	'src/options_parser.js',
-	'src/bloodhound.js'
+	'src/bloodhound.js',
+	'src/util.js'
 ];
 
 module.exports = function(grunt) {

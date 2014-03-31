@@ -21,7 +21,7 @@
 				}
 			],
 			prefetch: 'fixtures/prefetch.json',
-			remote: 'fixtures/remote.json',
+			remote: 'fixtures/remote.json?query=%QUERY',
 			datumTokenizer: function(datum) {
 				return _.toArray(datum);
 			},
@@ -30,14 +30,8 @@
 
 		bh.initialize();
 
-		$scope.search = function(term) {
-			if (!term) {
-				$scope.results = [];
-
-				return;
-			}
-
-			bh.get(term, function(results) {
+		$scope.search = function(query) {
+			bh.get(query, function(results) {
 				$scope.results = results;
 			});
 		};

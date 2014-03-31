@@ -7,8 +7,10 @@
 // inspired by https://github.com/jharding/lru-cache
 
 (function() {
+  'use strict';
+  
   var module = angular.module('bloodhound.lru-cache', []);
-
+  
   module.factory('LruCache', function() {
     var LruCache = (function() {
 
@@ -19,7 +21,7 @@
         this.list = new List();
       }
 
-      _.mixin(LruCache.prototype, {
+      angular.extend(LruCache.prototype, {
         set: function set(key, val) {
           var tailItem = this.list.tail, node;
 
@@ -60,7 +62,7 @@
         this.head = this.tail = null;
       }
 
-      _.mixin(List.prototype, {
+      angular.extend(List.prototype, {
         add: function add(node) {
           if (this.head) {
             node.next = this.head;
@@ -91,7 +93,8 @@
       return LruCache;
 
     })();
-
+    
     return LruCache;
   });
 })();
+
