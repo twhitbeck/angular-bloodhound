@@ -619,18 +619,18 @@
         module.factory("util", function($timeout) {
             return {
                 debounce: function(func, wait, immediate) {
-                    var timeout, result;
+                    var promise, result;
                     return function() {
                         var context = this, args = arguments, later, callNow;
                         later = function() {
-                            timeout = null;
+                            promise = null;
                             if (!immediate) {
                                 result = func.apply(context, args);
                             }
                         };
-                        callNow = immediate && !timeout;
-                        clearTimeout(timeout);
-                        timeout = setTimeout(later, wait);
+                        callNow = immediate && !promise;
+                        $timeout.cancel(promise);
+                        promise = $timeout(later, wait);
                         if (callNow) {
                             result = func.apply(context, args);
                         }
