@@ -188,7 +188,7 @@
         var module = angular.module("bloodhound.transport", [ "bloodhound.lru-cache" ]);
         module.factory("Transport", function($http, $q, $timeout, LruCache) {
             var Transport = function() {
-                var pendingRequestsCount = 0, pendingRequests = {}, maxPendingRequests = 6, requestCache = new LruCache(10);
+                var pendingRequestsCount = 0, pendingRequests = {}, maxPendingRequests = 6, requestCache = new LruCache(10), lastUrl = "";
                 function Transport(o) {
                     o = o || {};
                     this._send = o.transport ? callbackToDeferred(o.transport) : $http.get;
@@ -202,12 +202,15 @@
                 };
                 angular.extend(Transport.prototype, {
                     _get: function(url, o, cb) {
+                        if (url !== lastUrl) {
+                            return;
+                        }
                         var that = this, promise;
                         if (promise = pendingRequests[url]) {
-                            promise.success(done).error(fail);
+                            promise.then(dataPassthrough(done), fail);
                         } else if (pendingRequestsCount < maxPendingRequests) {
                             pendingRequestsCount++;
-                            pendingRequests[url] = this._send(url, o).success(done).error(fail).finally(always);
+                            pendingRequests[url] = this._send(url, o).then(dataPassthrough(done), fail).finally(always);
                         } else {
                             this.onDeckRequestArgs = [].slice.call(arguments, 0);
                         }
@@ -233,6 +236,7 @@
                             cb = o;
                             o = {};
                         }
+                        lastUrl = url;
                         if (resp = requestCache.get(url)) {
                             $timeout(function() {
                                 cb && cb(null, resp);
@@ -262,6 +266,11 @@
                     };
                 }
             }();
+            function dataPassthrough(fn) {
+                return function(response) {
+                    fn(response.data);
+                };
+            }
             return Transport;
         });
     })();

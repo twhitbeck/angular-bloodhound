@@ -14,7 +14,8 @@
       var pendingRequestsCount = 0,
           pendingRequests = {},
           maxPendingRequests = 6,
-          requestCache = new LruCache(10);
+          requestCache = new LruCache(10),
+          lastUrl = '';
 
       // constructor
       // -----------
@@ -45,18 +46,22 @@
         // ### private
 
         _get: function(url, o, cb) {
+          if (url !== lastUrl) {
+            return;
+          }
+
           var that = this, promise;
 
           // a request is already in progress, piggyback off of it
           if (promise = pendingRequests[url]) {
-            promise.success(done).error(fail);
+            promise.then(dataPassthrough(done), fail);
           }
 
           // under the pending request threshold, so fire off a request
           else if (pendingRequestsCount < maxPendingRequests) {
             pendingRequestsCount++;
             pendingRequests[url] =
-              this._send(url, o).success(done).error(fail).finally(always);
+              this._send(url, o).then(dataPassthrough(done), fail).finally(always);
           }
 
           // at the pending request threshold, so hang out in the on deck circle
@@ -94,6 +99,8 @@
             cb = o;
             o = {};
           }
+
+          lastUrl = url;
 
           // in-memory cache hit
           if (resp = requestCache.get(url)) {
@@ -146,6 +153,12 @@
         };
       }
     })();
+
+    function dataPassthrough(fn) {
+      return function(response) {
+        fn(response.data);
+      };
+    }
     
     return Transport;
   });
