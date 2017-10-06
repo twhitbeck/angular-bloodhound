@@ -1,3 +1,6 @@
+## [UNMAINTAINED]
+This project is currently unmaintained. If you're interested in maintaining it, please reach out!
+
 angular-bloodhound
 ==================
 
