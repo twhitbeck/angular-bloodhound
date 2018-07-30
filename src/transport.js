@@ -23,7 +23,7 @@
       function Transport(o) {
         o = o || {};
 
-        this._send = o.transport ? callbackToDeferred(o.transport) : $http.get;
+        this._send = o.transport ? callbackToPromise(o.transport) : $http.get;
         this._get = o.rateLimiter ? o.rateLimiter(this._get) : this._get;
       }
 
